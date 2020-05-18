@@ -4,9 +4,11 @@ import argparse
 import math
 from time import clock, sleep
 from test_bench import TestBench
+from utils.logger import Logger
 
 def example_script(name_interface):
     device = TestBench(name_interface,dt=0.001)
+    logger = Logger(device=device, logSize=10000)
     nb_motors = device.nb_motors
 
     kp = 0.125 # Proportional gain
@@ -18,8 +20,10 @@ def example_script(name_interface):
     device.Init(calibrateEncoders=True)
     device.t = 0 # reset time for the sinus to begin at 0
     #CONTROL LOOP ***************************************************
-    while ((not device.hardware.IsTimeout()) and (clock() < 200)):
+    while ((not device.hardware.IsTimeout()) and (device.t < 10)):
         device.UpdateMeasurment()
+
+        logger.sample(device=device)
 
         torques = [0]*nb_motors
         for i in range(device.nb_motors):
@@ -40,6 +44,8 @@ def example_script(name_interface):
     # Whatever happened we send 0 torques to the motors.
     device.SetDesiredJointTorque([0]*nb_motors)
     device.SendCommand(WaitEndOfCycle=True)
+
+    logger.saveAll()
 
     if device.hardware.IsTimeout():
         print("Masterboard timeout detected.")
